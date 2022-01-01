@@ -58,6 +58,7 @@
 	#include <gdk/gdkx.h>
 	#include <X11/Xlib.h>
 	#include <X11/Xutil.h>
+	#include <X11/extensions/shape.h>
 	#include <cairo/cairo-xlib.h>
 
 	#if GTK_MAJOR_VERSION < 3
@@ -293,6 +294,9 @@ gboolean option_hide_info_box = FALSE;
 gboolean option_start_fullscreen = FALSE;
 gdouble option_initial_scale = 1.0;
 gboolean option_start_with_slideshow_mode = FALSE;
+gboolean option_click_through = FALSE;
+gboolean option_keep_above = FALSE;
+gboolean option_skip_taskbar = FALSE;
 gboolean option_sort = FALSE;
 enum { NAME, MTIME } option_sort_key = NAME;
 gboolean option_shuffle = FALSE;
@@ -394,6 +398,9 @@ PQIV_DISABLE_PEDANTIC
 // implemented for option parsing.
 GOptionEntry options[] = {
 	{ "transparent-background", 'c', 0, G_OPTION_ARG_NONE, &option_transparent_background, "Borderless transparent window", NULL },
+	{ "click-through", 'C', 0, G_OPTION_ARG_NONE, &option_click_through, "Window does not accept mouse input", NULL },
+	{ "keep-above", 'K', 0, G_OPTION_ARG_NONE, &option_keep_above, "Keep window above others", NULL },
+	{ "skip-taskbar", 'k', 0, G_OPTION_ARG_NONE, &option_skip_taskbar, "Skip taskbar", NULL },
 	{ "slideshow-interval", 'd', 0, G_OPTION_ARG_DOUBLE, &option_slideshow_interval, "Set slideshow interval", "n" },
 	{ "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &option_start_fullscreen, "Start in fullscreen mode", NULL },
 	{ "fade", 'F', 0, G_OPTION_ARG_NONE, (gpointer)&option_fading, "Fade between images", NULL },
@@ -6749,6 +6756,24 @@ gboolean window_configure_callback(GtkWidget *widget, GdkEventConfigure *event, 
 		D_UNLOCK(file_tree);
 	}
 	#endif
+
+	if (option_click_through) {
+		Display *display = GDK_SCREEN_XDISPLAY(gdk_screen_get_default());
+		unsigned long window_xid = gdk_x11_window_get_xid(gtk_widget_get_window(GTK_WIDGET(main_window)));
+		Region region = XCreateRegion();
+		XRectangle rectangle = { 0, 0, 1, 1 };
+		XUnionRectWithRegion(&rectangle, region, region);
+		XShapeCombineRegion(display, window_xid, ShapeInput, 0, 0, region, ShapeSet);
+		XDestroyRegion(region);	
+	}
+
+	if (option_keep_above) {
+		gtk_window_set_keep_above(main_window, TRUE);
+	}
+
+	if (option_skip_taskbar) {
+		gtk_window_set_skip_taskbar_hint(main_window, TRUE);
+	}
 
 	return FALSE;
 }/*}}}*/
